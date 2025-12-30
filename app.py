@@ -4,12 +4,25 @@ import requests
 import os
 
 app = Flask(__name__)
-CORS(app)
+
+# 🔐 Allow GitHub Pages frontend
+CORS(
+    app,
+    resources={r"/api/*": {
+        "origins": [
+            "https://gururajachar2008.github.io"
+        ]
+    }}
+)
 
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 
-@app.route("/api/chat", methods=["POST"])
+@app.route("/api/chat", methods=["POST", "OPTIONS"])
 def chat():
+    if request.method == "OPTIONS":
+        # Preflight request
+        return jsonify({"status": "ok"}), 200
+
     try:
         data = request.get_json()
         user_message = data.get("message")
@@ -20,8 +33,8 @@ def chat():
         headers = {
             "Authorization": f"Bearer {OPENROUTER_API_KEY}",
             "Content-Type": "application/json",
-            "HTTP-Referer": "https://gururajachar2008.github.io/Guru-JI-AI/",  # optional
-            "X-Title": "GuruJI"
+            "HTTP-Referer": "https://gururajachar2008.github.io",
+            "X-Title": "GuruJI AI"
         }
 
         payload = {
@@ -40,13 +53,11 @@ def chat():
 
         if response.status_code != 200:
             return jsonify({
-                "error": "OpenRouter error",
+                "error": "OpenRouter failed",
                 "details": response.text
             }), 500
 
-        result = response.json()
-        reply = result["choices"][0]["message"]["content"]
-
+        reply = response.json()["choices"][0]["message"]["content"]
         return jsonify({"reply": reply})
 
     except Exception as e:
