@@ -27,7 +27,7 @@ def chat():
                 "Content-Type": "application/json",
             },
             json={
-                "model": "deepseek/deepseek-r1:free", # Updated to a more stable free model slug
+                "model": "google/gemini-2.0-flash-exp:free", # Updated to a more stable free model slug
                 "messages": [
                     {
                         "role": "system", 
