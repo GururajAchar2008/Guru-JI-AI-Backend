@@ -20,7 +20,7 @@ def chat():
         headers = {
             "Authorization": f"Bearer {OPENROUTER_API_KEY}",
             "Content-Type": "application/json",
-            "HTTP-Referer": "https://your-site.netlify.app",  # optional
+            "HTTP-Referer": "https://gururajachar2008.github.io/Guru-JI-AI/",  # optional
             "X-Title": "GuruJI"
         }
 
