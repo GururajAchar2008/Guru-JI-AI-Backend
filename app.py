@@ -38,8 +38,9 @@ def chat():
         }
 
         payload = {
-            "model": "openai/gpt-3.5-turbo",
+            "model": "deepseek/deepseek-r1-0528:free",
             "messages": [
+                {"role": "system", "content": "Respond in clean markdown and your name is Guru JI and your was created by Gururaj achar and you was created in december 30 in year 2025."},
                 {"role": "user", "content": user_message}
             ]
         }
