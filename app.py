@@ -2,68 +2,52 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import requests
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = Flask(__name__)
-
-# 🔐 Allow GitHub Pages frontend
-CORS(
-    app,
-    resources={r"/api/*": {
-        "origins": [
-            "https://gururajachar2008.github.io"
-        ]
-    }}
-)
+# Allow CORS for your frontend (Render or localhost)
+CORS(app)
 
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 
-@app.route("/api/chat", methods=["POST", "OPTIONS"])
+@app.route("/api/chat", methods=["POST"])
 def chat():
-    if request.method == "OPTIONS":
-        # Preflight request
-        return jsonify({"status": "ok"}), 200
-
     try:
-        data = request.get_json()
-        user_message = data.get("message")
-
+        user_message = request.json.get("message")
+        
         if not user_message:
-            return jsonify({"error": "Message is required"}), 400
-
-        headers = {
-            "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-            "Content-Type": "application/json",
-            "HTTP-Referer": "https://gururajachar2008.github.io",
-            "X-Title": "GuruJI AI"
-        }
-
-        payload = {
-            "model": "deepseek/deepseek-r1-0528:free",
-            "messages": [
-                {"role": "system", "content": "Respond in clean markdown and your name is Guru JI and your was created by Gururaj achar and you was created in december 30 in year 2025."},
-                {"role": "user", "content": user_message}
-            ]
-        }
+            return jsonify({"error": "No message provided"}), 400
 
         response = requests.post(
             "https://openrouter.ai/api/v1/chat/completions",
-            headers=headers,
-            json=payload,
-            timeout=30
+            headers={
+                "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": "deepseek/deepseek-r1:free", # Updated to a more stable free model slug
+                "messages": [
+                    {
+                        "role": "system", 
+                        "content": "You are Guru JI, an AI created by Gururaj Achar on December 30, 2025. Respond in clean Markdown."
+                    },
+                    {"role": "user", "content": user_message}
+                ]
+            }
         )
 
-        if response.status_code != 200:
-            return jsonify({
-                "error": "OpenRouter failed",
-                "details": response.text
-            }), 500
+        data = response.json()
 
-        reply = response.json()["choices"][0]["message"]["content"]
-        return jsonify({"reply": reply})
+        if response.status_code != 200:
+            return jsonify({"error": data}), response.status_code
+
+        ai_reply = data["choices"][0]["message"]["content"]
+        return jsonify({"reply": ai_reply})
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    app.run(port=5000, debug=True)
