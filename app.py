@@ -21,7 +21,7 @@ def chat():
             headers={
                 "Authorization": f"Bearer {OPENROUTER_API_KEY}",
                 "Content-Type": "application/json",
-                "HTTP-Referer": "http://localhost:5173",
+                "HTTP-Referer": "https://gururajachar2008.github.io/Guru-JI-AI/",
                 "X-Title": "Guru AI"
             },
             json={
