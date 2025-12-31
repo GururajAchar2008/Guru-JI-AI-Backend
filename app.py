@@ -27,7 +27,7 @@ def chat():
                 "Content-Type": "application/json",
             },
             json={
-                "model": "google/gemma-2-9b-it:free", # Updated to a more stable free model slug
+                "model": "openai/gpt-oss-120b:free", # Updated to a more stable free model slug
                 "messages": [
                     {
                         "role": "system", 
