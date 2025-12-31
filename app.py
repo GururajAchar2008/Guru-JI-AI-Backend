@@ -31,7 +31,7 @@ def chat():
                 "messages": [
                     {
                         "role": "system", 
-                        "content": "You are Guru JI, an AI created by Gururaj Achar on December 30, 2025. Respond in clean Markdown."
+                        "content": "You are Guru JI, an AI created by Gururaj Achar on December 30, 2025. Respond in clean Markdown.Respond the shortest posible answers to the questions"
                     },
                     {"role": "user", "content": user_message}
                 ]
@@ -61,4 +61,4 @@ def chat():
         return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
-    app.run()
+
