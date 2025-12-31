@@ -48,7 +48,7 @@ def chat():
     for attempt in range(retries):
         try:
             response = requests.post(
-                OPENROUTER_URL,
+                url="https://openrouter.ai/api/v1/chat/completions",
                 headers=headers,
                 json=payload,
                 timeout=70  # ⏳ wait properly
