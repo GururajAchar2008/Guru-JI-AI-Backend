@@ -43,7 +43,7 @@ def chat():
     }
 
     # 🔁 Retry logic (THIS IS THE MAGIC)
-    retries = 3
+    retries = 4
 
     for attempt in range(retries):
         try:
@@ -51,7 +51,7 @@ def chat():
                 OPENROUTER_URL,
                 headers=headers,
                 json=payload,
-                timeout=60  # ⏳ wait properly
+                timeout=70  # ⏳ wait properly
             )
 
             if response.status_code == 200:
@@ -61,14 +61,14 @@ def chat():
 
             # Rate limit → wait and retry
             if response.status_code == 429:
-                time.sleep(5)
+                time.sleep(6)
                 continue
 
             # Any other error → retry
-            time.sleep(3)
+            time.sleep(4)
 
         except requests.exceptions.RequestException:
-            time.sleep(3)
+            time.sleep(4)
 
     # ❌ Only after all retries fail
     return jsonify({
