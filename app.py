@@ -29,7 +29,7 @@ def chat():
     }
 
     payload = {
-        "model":"google/gemini-2.0-flash-exp:free",
+        "model":"openai/gpt-4o",
         "messages": [
             {
                 "role": "system",
