@@ -29,7 +29,7 @@ def chat():
     }
 
     payload = {
-        "model":"openai/gpt-4o",
+        "model":"deepseek/deepseek-r1-0528:free",
         "messages": [
             {
                 "role": "system",
