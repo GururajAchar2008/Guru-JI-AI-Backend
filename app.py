@@ -12,6 +12,10 @@ CORS(app)
 
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 
+@app.route("/", methods=["GET"])
+def health():
+    return jsonify({"status": "ok", "service": "Guru JI backend"}), 200
+
 @app.route("/api/chat", methods=["POST"])
 def chat():
     try:
@@ -41,18 +45,11 @@ def chat():
 
         data = response.json()
 
-        if response.status_code != 200:
-            return jsonify({"error": data}), response.status_code
-
         if response.status_code == 429:
-            return jsonify({
-                "error": "Rate limit exceeded. Please wait 30–60 seconds."
-                        }), 429
+            return jsonify({"error": "Rate limit exceeded. Wait 30–60 seconds."}), 429
 
         if response.status_code != 200:
-           return jsonify({
-                 "error": "Upstream AI service failed."
-                        }), 502
+            return jsonify({"error": "Upstream AI service failed."}), 502
 
         ai_reply = data["choices"][0]["message"]["content"]
         return jsonify({"reply": ai_reply})
@@ -61,5 +58,5 @@ def chat():
         return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0")
+    app.run()
 
