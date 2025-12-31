@@ -27,7 +27,7 @@ def chat():
                 "Content-Type": "application/json",
             },
             json={
-                "model": "google/gemini-2.0-flash-exp:free", # Updated to a more stable free model slug
+                "model": "google/gemma-2-9b-it:free", # Updated to a more stable free model slug
                 "messages": [
                     {
                         "role": "system", 
@@ -35,13 +35,24 @@ def chat():
                     },
                     {"role": "user", "content": user_message}
                 ]
-            }
+            },
+            timeout=25
         )
 
         data = response.json()
 
         if response.status_code != 200:
             return jsonify({"error": data}), response.status_code
+
+        if response.status_code == 429:
+            return jsonify({
+                "error": "Rate limit exceeded. Please wait 30–60 seconds."
+                        }), 429
+
+        if response.status_code != 200:
+           return jsonify({
+                 "error": "Upstream AI service failed."
+                        }), 502
 
         ai_reply = data["choices"][0]["message"]["content"]
         return jsonify({"reply": ai_reply})
