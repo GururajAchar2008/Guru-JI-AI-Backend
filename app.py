@@ -18,44 +18,62 @@ def health():
 
 @app.route("/api/chat", methods=["POST"])
 def chat():
-    try:
-        user_message = request.json.get("message")
-        
-        if not user_message:
-            return jsonify({"error": "No message provided"}), 400
+    user_message = request.json.get("message")
 
-        response = requests.post(
-            "https://openrouter.ai/api/v1/chat/completions",
-            headers={
-                "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-                "Content-Type": "application/json",
+    if not user_message:
+        return jsonify({"error": "No message provided"}), 400
+
+    headers = {
+        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+        "Content-Type": "application/json",
+    }
+
+    payload = {
+        "model":"google/gemini-2.0-flash-exp:free",
+        "messages": [
+            {
+                "role": "system",
+                "content": (
+                    "You are Guru JI, an AI created by Gururaj Achar. "
+                    "Reply in clean Markdown. Keep answers short and clear."
+                )
             },
-            json={
-                "model": "openai/gpt-oss-120b:free", # Updated to a more stable free model slug
-                "messages": [
-                    {
-                        "role": "system", 
-                        "content": "You are Guru JI, an AI created by Gururaj Achar on December 30, 2025. Respond in clean Markdown.Respond the shortest posible answers to the questions"
-                    },
-                    {"role": "user", "content": user_message}
-                ]
-            },
-            timeout=25
-        )
+            {"role": "user", "content": user_message}
+        ]
+    }
 
-        data = response.json()
+    # 🔁 Retry logic (THIS IS THE MAGIC)
+    retries = 3
 
-        if response.status_code == 429:
-            return jsonify({"error": "Rate limit exceeded. Wait 30–60 seconds."}), 429
+    for attempt in range(retries):
+        try:
+            response = requests.post(
+                OPENROUTER_URL,
+                headers=headers,
+                json=payload,
+                timeout=60  # ⏳ wait properly
+            )
 
-        if response.status_code != 200:
-            return jsonify({"error": "Upstream AI service failed."}), 502
+            if response.status_code == 200:
+                data = response.json()
+                ai_reply = data["choices"][0]["message"]["content"]
+                return jsonify({"reply": ai_reply})
 
-        ai_reply = data["choices"][0]["message"]["content"]
-        return jsonify({"reply": ai_reply})
+            # Rate limit → wait and retry
+            if response.status_code == 429:
+                time.sleep(5)
+                continue
 
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+            # Any other error → retry
+            time.sleep(3)
+
+        except requests.exceptions.RequestException:
+            time.sleep(3)
+
+    # ❌ Only after all retries fail
+    return jsonify({
+        "reply": "⚠️ Guru JI is currently waking up. Please try again in a moment."
+    }), 200
 
 if __name__ == "__main__":
     app.run()
