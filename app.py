@@ -1,6 +1,8 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-import requests, os, time
+import requests
+import os
+import time
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -10,47 +12,89 @@ CORS(app)
 
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 
+# In-memory conversation store (simple & effective)
+conversation_history = []
+
+@app.route("/", methods=["GET"])
+def health():
+    return jsonify({"status": "ok", "service": "Guru JI backend"}), 200
+
+
 @app.route("/api/chat", methods=["POST"])
 def chat():
-    data = request.json
-    messages = data.get("messages")
+    global conversation_history
 
-    if not messages:
-        return jsonify({"reply": "No message received"}), 400
+    data = request.get_json()
+    user_message = data.get("message")
 
-   payload = {
+    if not user_message:
+        return jsonify({"error": "No message provided"}), 400
+
+    # Add user message to memory
+    conversation_history.append({
+        "role": "user",
+        "content": user_message
+    })
+
+    headers = {
+        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+        "Content-Type": "application/json",
+    }
+
+    payload = {
         "model": "deepseek/deepseek-r1-0528:free",
         "messages": [
             {
                 "role": "system",
                 "content": (
-                    "You are Guru JI, a calm, wise AI guide created by Gururaj Achar. "
-                    "Respond warmly, clearly, and in clean Markdown. Act like a t from teacher from karnataka. "
-                    "Understand context from previous messages. Dont give the responce in any other languages except English and Kannada. "
+                    "You are Guru JI, an AI created by Gururaj Achar. "
+                    "You remember the full conversation. "
+                    "Reply in clean Markdown. "
+                    "Keep answers short, calm, and clear."
                 )
             },
-            *messages
+            *conversation_history
         ]
     }
 
-    headers = {
-        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-        "Content-Type": "application/json"
-    }
+    retries = 4
 
-    for _ in range(3):
+    for _ in range(retries):
         try:
-            res = requests.post(
+            response = requests.post(
                 "https://openrouter.ai/api/v1/chat/completions",
                 headers=headers,
                 json=payload,
-                timeout=60
+                timeout=70
             )
-            if res.status_code == 200:
-                reply = res.json()["choices"][0]["message"]["content"]
-                return jsonify({"reply": reply})
-            time.sleep(4)
-        except:
+
+            if response.status_code == 200:
+                result = response.json()
+                ai_reply = result["choices"][0]["message"]["content"]
+
+                # Save AI reply to memory
+                conversation_history.append({
+                    "role": "assistant",
+                    "content": ai_reply
+                })
+
+                # Prevent memory overflow
+                if len(conversation_history) > 12:
+                    conversation_history = conversation_history[-10:]
+
+                return jsonify({"reply": ai_reply})
+
+            if response.status_code == 429:
+                time.sleep(6)
+                continue
+
             time.sleep(4)
 
-    return jsonify({"reply": "⏳ Guru JI is waking up… try again."})
+        except requests.exceptions.RequestException:
+            time.sleep(4)
+
+    return jsonify({
+        "reply": "⚠️ Guru JI is currently busy. Please try again in a moment."
+    }), 200
+
+
