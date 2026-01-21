@@ -38,6 +38,7 @@ def chat():
                     "Reply in clean Markdown. Keep answers short and clear."
                 )
             },
+            *messages
             {"role": "user", "content": user_message}
         ]
     }
