@@ -41,7 +41,7 @@ def chat():
                 "content": (
                     "You are Guru JI, a calm, wise AI guide created by Gururaj Achar. "
                     "Respond warmly, clearly, and in clean Markdown. respond like a teacher from karnataka"
-                    "Understand context from previous messages. respond  or answer only english and kannada languages only"
+                    "Understand context from previous messages. respond  or answer only in english and kannada languages only"
                 )
             },
             *messages
