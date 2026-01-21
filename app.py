@@ -1,95 +1,52 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-import requests
-import os
+import requests, os, time
 from dotenv import load_dotenv
 
 load_dotenv()
 
 app = Flask(__name__)
-# Allow CORS for your frontend (Render or localhost)
 CORS(app)
 
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 
-@app.route("/", methods=["GET"])
-def health():
-    return jsonify({"status": "ok", "service": "Guru JI backend"}), 200
-
 @app.route("/api/chat", methods=["POST"])
 def chat():
     data = request.json
-
     messages = data.get("messages")
-    single_message = data.get("message")
 
+    if not messages:
+        return jsonify({"reply": "No message received"}), 400
 
-    if not message:
-        return jsonify({"error": "No message provided"}), 400
+    payload = {
+        "model": "deepseek/deepseek-r1-0528:free",
+        "messages": [
+            {
+                "role": "system",
+                "content": "You are Guru JI. Reply in clean markdown. Be clear and helpful."
+            },
+            *messages
+        ]
+    }
 
     headers = {
         "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-        "Content-Type": "application/json",
+        "Content-Type": "application/json"
     }
-    final_messages = [
-    {
-        "role": "system",
-        "content": (
-            "You are Guru JI, an AI created by Gururaj Achar. "
-            "Reply in clean Markdown. Keep answers short and clear."
-        )
-    }
-]
 
-if messages and isinstance(messages, list):
-    final_messages.extend(messages)
-elif single_message:
-    final_messages.append({
-        "role": "user",
-        "content": single_message
-    })
-
-
-  payload = {
-    "model": "deepseek/deepseek-r1-0528:free",
-    "messages": final_messages
-}
-
-
-
-    # 🔁 Retry logic (THIS IS THE MAGIC)
-    retries = 4
-
-    for attempt in range(retries):
+    for _ in range(3):
         try:
-            response = requests.post(
-                url="https://openrouter.ai/api/v1/chat/completions",
+            res = requests.post(
+                "https://openrouter.ai/api/v1/chat/completions",
                 headers=headers,
                 json=payload,
-                timeout=70  # ⏳ wait properly
+                timeout=60
             )
-
-            if response.status_code == 200:
-                data = response.json()
-                ai_reply = data["choices"][0]["message"]["content"]
-                return jsonify({"reply": ai_reply})
-
-            # Rate limit → wait and retry
-            if response.status_code == 429:
-                time.sleep(6)
-                continue
-
-            # Any other error → retry
+            if res.status_code == 200:
+                reply = res.json()["choices"][0]["message"]["content"]
+                return jsonify({"reply": reply})
+            time.sleep(4)
+        except:
             time.sleep(4)
 
-        except requests.exceptions.RequestException:
-            time.sleep(4)
-
-    # ❌ Only after all retries fail
-    return jsonify({
-        "reply": "⚠️ Guru JI is currently waking up. Please try again in a moment."
-    }), 200
-
-if __name__ == "__main__":
-    app.run()
-
+    return jsonify({"reply": "⏳ Guru JI is waking up… try again."})
