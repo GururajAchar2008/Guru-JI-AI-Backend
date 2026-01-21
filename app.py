@@ -18,9 +18,9 @@ def health():
 
 @app.route("/api/chat", methods=["POST"])
 def chat():
-    user_message = request.json.get("message")
+    messages = request.json.get("messages")
 
-    if not user_message:
+    if not message:
         return jsonify({"error": "No message provided"}), 400
 
     headers = {
@@ -28,20 +28,20 @@ def chat():
         "Content-Type": "application/json",
     }
 
-    payload = {
-        "model":"deepseek/deepseek-r1-0528:free",
-        "messages": [
-            {
-                "role": "system",
-                "content": (
-                    "You are Guru JI, an AI created by Gururaj Achar. "
-                    "Reply in clean Markdown. Keep answers short and clear."
-                )
-            },
-            *messages
-            {"role": "user", "content": user_message}
-        ]
-    }
+   payload = {
+     "model": "deepseek/deepseek-r1-0528:free",
+     "messages": [
+         {
+            "role": "system",
+            "content": (
+                "You are Guru JI, an AI created by Gururaj Achar. "
+                "Reply in clean Markdown. Keep answers short and clear."
+            )
+        },
+        *messages
+      ]
+   }
+
 
     # 🔁 Retry logic (THIS IS THE MAGIC)
     retries = 4
