@@ -22,19 +22,11 @@ def health():
 
 @app.route("/api/chat", methods=["POST"])
 def chat():
-    global conversation_history
+    data = request.json
+    messages = data.get("messages")
 
-    data = request.get_json()
-    user_message = data.get("message")
-
-    if not user_message:
-        return jsonify({"error": "No message provided"}), 400
-
-    # Add user message to memory
-    conversation_history.append({
-        "role": "user",
-        "content": user_message
-    })
+    if not messages:
+        return jsonify({"error": "No messages provided"}), 400
 
     headers = {
         "Authorization": f"Bearer {OPENROUTER_API_KEY}",
@@ -47,54 +39,31 @@ def chat():
             {
                 "role": "system",
                 "content": (
-                    "You are Guru JI, an AI created by Gururaj Achar. "
-                    "You remember the full conversation. "
-                    "Reply in clean Markdown. "
-                    "Keep answers short, calm, and clear."
+                    "You are Guru JI, a calm, wise AI guide created by Gururaj Achar. "
+                    "Respond warmly, clearly, and in clean Markdown. respond like a teacher from karnataka"
+                    "Understand context from previous messages. respond  or answer only english and kannada languages only"
                 )
             },
-            *conversation_history
+            *messages
         ]
     }
 
-    retries = 4
+    try:
+        response = requests.post(
+            "https://openrouter.ai/api/v1/chat/completions",
+            headers=headers,
+            json=payload,
+            timeout=70
+        )
 
-    for _ in range(retries):
-        try:
-            response = requests.post(
-                "https://openrouter.ai/api/v1/chat/completions",
-                headers=headers,
-                json=payload,
-                timeout=70
-            )
+        data = response.json()
+        reply = data["choices"][0]["message"]["content"]
+        return jsonify({ "reply": reply })
 
-            if response.status_code == 200:
-                result = response.json()
-                ai_reply = result["choices"][0]["message"]["content"]
+    except Exception:
+        return jsonify({
+            "reply": "⏳ Guru JI is waking up. Please wait a moment."
+        }), 200
 
-                # Save AI reply to memory
-                conversation_history.append({
-                    "role": "assistant",
-                    "content": ai_reply
-                })
-
-                # Prevent memory overflow
-                if len(conversation_history) > 12:
-                    conversation_history = conversation_history[-10:]
-
-                return jsonify({"reply": ai_reply})
-
-            if response.status_code == 429:
-                time.sleep(6)
-                continue
-
-            time.sleep(4)
-
-        except requests.exceptions.RequestException:
-            time.sleep(4)
-
-    return jsonify({
-        "reply": "⚠️ Guru JI is currently busy. Please try again in a moment."
-    }), 200
 
 
