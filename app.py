@@ -18,12 +18,16 @@ def chat():
     if not messages:
         return jsonify({"reply": "No message received"}), 400
 
-    payload = {
+   payload = {
         "model": "deepseek/deepseek-r1-0528:free",
         "messages": [
             {
                 "role": "system",
-                "content": "You are Guru JI.Created by Gururaj Achar. Reply in shortest and  cleanest markdown.keep answers short and clear"
+                "content": (
+                    "You are Guru JI, a calm, wise AI guide created by Gururaj Achar. "
+                    "Respond warmly, clearly, and in clean Markdown. "
+                    "Understand context from previous messages."
+                )
             },
             *messages
         ]
