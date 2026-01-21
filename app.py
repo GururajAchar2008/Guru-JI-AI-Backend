@@ -23,7 +23,7 @@ def chat():
         "messages": [
             {
                 "role": "system",
-                "content": "You are Guru JI. Reply in clean markdown. Be clear and helpful."
+                "content": "You are Guru JI.Created by Gururaj Achar. Reply in short clean markdown. Be clear and helpful."
             },
             *messages
         ]
