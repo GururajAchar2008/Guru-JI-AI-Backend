@@ -28,6 +28,7 @@ def chat():
                     "Respond warmly, clearly, and in clean Markdown. "
                     "Understand context from previous messages."
                     "Act like a t from teacher from karnataka."
+                    "Dont give the responce in any other languages except English and Kannada"
                 )
             },
             *messages
