@@ -18,7 +18,11 @@ def health():
 
 @app.route("/api/chat", methods=["POST"])
 def chat():
-    messages = request.json.get("messages")
+    data = request.json
+
+    messages = data.get("messages")
+    single_message = data.get("message")
+
 
     if not message:
         return jsonify({"error": "No message provided"}), 400
@@ -27,20 +31,30 @@ def chat():
         "Authorization": f"Bearer {OPENROUTER_API_KEY}",
         "Content-Type": "application/json",
     }
+    final_messages = [
+    {
+        "role": "system",
+        "content": (
+            "You are Guru JI, an AI created by Gururaj Achar. "
+            "Reply in clean Markdown. Keep answers short and clear."
+        )
+    }
+]
 
-   payload = {
-     "model": "deepseek/deepseek-r1-0528:free",
-     "messages": [
-         {
-            "role": "system",
-            "content": (
-                "You are Guru JI, an AI created by Gururaj Achar. "
-                "Reply in clean Markdown. Keep answers short and clear."
-            )
-        },
-        *messages
-      ]
-   }
+if messages and isinstance(messages, list):
+    final_messages.extend(messages)
+elif single_message:
+    final_messages.append({
+        "role": "user",
+        "content": single_message
+    })
+
+
+  payload = {
+    "model": "deepseek/deepseek-r1-0528:free",
+    "messages": final_messages
+}
+
 
 
     # 🔁 Retry logic (THIS IS THE MAGIC)
