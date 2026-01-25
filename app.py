@@ -4,6 +4,7 @@ import requests
 import os
 import time
 from dotenv import load_dotenv
+from PyPDF2 import PdfReader
 
 load_dotenv()
 
@@ -64,6 +65,37 @@ def chat():
         return jsonify({
             "reply": "⏳ Guru JI is waking up. Please wait a moment."
         }), 200
+
+
+@app.route("/api/upload", methods=["POST"])
+def upload_file():
+    if "file" not in request.files:
+        return jsonify({"reply": "No file received"}), 400
+
+    file = request.files["file"]
+
+    text = ""
+
+    if file.filename.endswith(".pdf"):
+        reader = PdfReader(file)
+        for page in reader.pages:
+            text += page.extract_text() or ""
+
+    elif file.filename.endswith(".txt"):
+        text = file.read().decode("utf-8")
+
+    else:
+        return jsonify({"reply": "Unsupported file type"}), 400
+
+    prompt = f"""
+    Summarize the following content clearly and simply:
+
+    {text[:12000]}
+    """
+
+    ai_reply = call_ai(prompt)  # your existing AI function
+
+    return jsonify({"reply": ai_reply})
 
 
 
