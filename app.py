@@ -74,7 +74,6 @@ def upload_file():
         return jsonify({"reply": "No file received"}), 400
 
     file = request.files["file"]
-
     text = ""
 
     if file.filename.endswith(".pdf"):
@@ -84,26 +83,14 @@ def upload_file():
 
     elif file.filename.endswith(".txt"):
         text = file.read().decode("utf-8")
-        CURRENT_FILE_CONTEXT = text
 
     else:
         return jsonify({"reply": "Unsupported file type"}), 400
 
-   prompt = f"""
-   You are GuruJI AI.
+    if not text.strip():
+        return jsonify({"reply": "No readable text found in file"}), 400
 
-   Use the following document as reference ONLY if relevant.
-
-   Document:
-   {file_context}
-
-   User question:
-   {user_message}
-   """
-
-    ai_reply = call_ai(prompt)  # your existing AI function
-
-    return jsonify({"reply": ai_reply})
-
-
-
+    return jsonify({
+        "reply": "📄 File uploaded successfully",
+        "content": text[:3000]  # limit for safety
+    })
