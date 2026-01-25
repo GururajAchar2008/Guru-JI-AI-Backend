@@ -10,6 +10,8 @@ load_dotenv()
 
 app = Flask(__name__)
 CORS(app)
+CURRENT_FILE_CONTEXT = ""
+
 
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 
@@ -54,7 +56,7 @@ def chat():
             "https://openrouter.ai/api/v1/chat/completions",
             headers=headers,
             json=payload,
-            timeout=120,
+            timeout=180,
             stream=False
         )
 
