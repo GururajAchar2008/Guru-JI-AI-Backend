@@ -10,7 +10,7 @@ load_dotenv()
 
 app = Flask(__name__)
 CORS(app)
-CURRENT_FILE_CONTEXT = ""
+
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 
 # In-memory conversation store (simple & effective)
@@ -40,9 +40,9 @@ def chat():
             {
                 "role": "system",
                 "content": (
-                    "You are Guru JI, a calm, wise AI guide created by Gururaj Achar. answer in the shortest way posible but informativly "
-                    "Respond warmly, clearly, and in clean Markdown. respond like a teacher from karnataka"
-                    "Understand context from previous messages. respond only in english language "
+                    "You are Guru JI, a calm, wise AI guide created by Gururaj Achar.If a document is provided, use it as the PRIMARY source. answer in the shortest way posible but informativly "
+                    "Respond warmly, clearly, and in clean Markdown. respond like a teacher from karnataka,Understand context from previous messages. respond only in english language "
+                    f"Document content:\n{CURRENT_FILE_CONTEXT[:12000]}"
                 )
             },
             *messages
@@ -70,6 +70,8 @@ def chat():
 
 @app.route("/api/upload", methods=["POST"])
 def upload_file():
+    global CURRENT_FILE_CONTEXT
+
     if "file" not in request.files:
         return jsonify({"reply": "No file received"}), 400
 
@@ -79,7 +81,9 @@ def upload_file():
     if file.filename.endswith(".pdf"):
         reader = PdfReader(file)
         for page in reader.pages:
-            text += page.extract_text() or ""
+            extracted = page.extract_text()
+            if extracted:
+                text += extracted + "\n"
 
     elif file.filename.endswith(".txt"):
         text = file.read().decode("utf-8")
@@ -87,10 +91,7 @@ def upload_file():
     else:
         return jsonify({"reply": "Unsupported file type"}), 400
 
-    if not text.strip():
-        return jsonify({"reply": "No readable text found in file"}), 400
+    CURRENT_FILE_CONTEXT = text.strip()
 
-    return jsonify({
-        "reply": "📄 File uploaded successfully",
-        "content": text[:3000]  # limit for safety
-    })
+    return jsonify({"reply": "📄 File uploaded successfully. You can now ask questions about it."})
+
