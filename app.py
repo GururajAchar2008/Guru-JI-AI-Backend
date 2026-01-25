@@ -54,7 +54,8 @@ def chat():
             "https://openrouter.ai/api/v1/chat/completions",
             headers=headers,
             json=payload,
-            timeout=70
+            timeout=120,
+            stream=False
         )
 
         data = response.json()
