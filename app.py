@@ -10,7 +10,9 @@ load_dotenv()
 
 app = Flask(__name__)
 CORS(app)
-CURRENT_FILE_CONTEXT = ""
+# Store file context per session
+FILE_CONTEXTS = {}
+
 
 
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
@@ -27,28 +29,38 @@ def health():
 def chat():
     data = request.json
     messages = data.get("messages")
+    session_id = data.get("session_id")
 
-    if not messages:
-        return jsonify({"error": "No messages provided"}), 400
+    if not messages or not session_id:
+        return jsonify({"error": "Missing data"}), 400
 
-    headers = {
-        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-        "Content-Type": "application/json",
-    }
+    file_context = FILE_CONTEXTS.get(session_id, "")
+
+    system_prompt = (
+        "You are Guru JI, a calm, wise AI guide created by Gururaj Achar. "
+        "Respond warmly, clearly, and in clean Markdown. "
+        "Answer briefly but informatively. "
+        "Respond like a teacher from Karnataka. "
+        "Respond only in English."
+    )
+
+    if file_context:
+        system_prompt += (
+            "\n\nUse the following document as the PRIMARY source:\n"
+            f"{file_context[:12000]}"
+        )
 
     payload = {
         "model": "deepseek/deepseek-r1-0528:free",
         "messages": [
-            {
-                "role": "system",
-                "content": (
-                    "You are Guru JI, a calm, wise AI guide created by Gururaj Achar.If a document is provided, use it as the PRIMARY source. answer in the shortest way posible but informativly "
-                    "Respond warmly, clearly, and in clean Markdown. respond like a teacher from karnataka,Understand context from previous messages. respond only in english language "
-                    f"Document content:\n{CURRENT_FILE_CONTEXT[:12000]}"
-                )
-            },
+            { "role": "system", "content": system_prompt },
             *messages
         ]
+    }
+
+    headers = {
+        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+        "Content-Type": "application/json",
     }
 
     try:
@@ -56,8 +68,7 @@ def chat():
             "https://openrouter.ai/api/v1/chat/completions",
             headers=headers,
             json=payload,
-            timeout=180,
-            stream=False
+            timeout=180
         )
 
         data = response.json()
@@ -67,12 +78,16 @@ def chat():
     except Exception:
         return jsonify({
             "reply": "⏳ Guru JI is waking up. Please wait a moment."
-        }), 200
+        })
+
 
 
 @app.route("/api/upload", methods=["POST"])
 def upload_file():
-    global CURRENT_FILE_CONTEXT
+    session_id = request.form.get("session_id")
+
+    if not session_id:
+        return jsonify({"reply": "Session ID missing"}), 400
 
     if "file" not in request.files:
         return jsonify({"reply": "No file received"}), 400
@@ -93,7 +108,10 @@ def upload_file():
     else:
         return jsonify({"reply": "Unsupported file type"}), 400
 
-    CURRENT_FILE_CONTEXT = text.strip()
+    FILE_CONTEXTS[session_id] = text.strip()
 
-    return jsonify({"reply": "📄 File uploaded successfully. You can now ask questions about it."})
+    return jsonify({
+        "reply": "📄 File uploaded successfully. You can now ask questions about it."
+    })
+
 
