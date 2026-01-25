@@ -106,7 +106,7 @@ def upload_file():
         text = file.read().decode("utf-8")
 
     else:
-        return jsonify({"reply": "Unsupported file type"}), 400
+        return jsonify({"reply": "Unsupported file type, For now i only accept PDF (.pdf) and TEXT (.txt) file formates for educational purposes only"}), 400
 
     FILE_CONTEXTS[session_id] = text.strip()
 
