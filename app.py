@@ -10,7 +10,7 @@ load_dotenv()
 
 app = Flask(__name__)
 CORS(app)
-
+CURRENT_FILE_CONTEXT = ""
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 
 # In-memory conversation store (simple & effective)
@@ -83,6 +83,7 @@ def upload_file():
 
     elif file.filename.endswith(".txt"):
         text = file.read().decode("utf-8")
+    CURRENT_FILE_CONTEXT = text
 
     else:
         return jsonify({"reply": "Unsupported file type"}), 400
