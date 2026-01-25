@@ -83,7 +83,7 @@ def upload_file():
 
     elif file.filename.endswith(".txt"):
         text = file.read().decode("utf-8")
-    CURRENT_FILE_CONTEXT = text
+        CURRENT_FILE_CONTEXT = text
 
     else:
         return jsonify({"reply": "Unsupported file type"}), 400
