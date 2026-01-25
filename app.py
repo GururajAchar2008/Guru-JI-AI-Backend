@@ -88,11 +88,17 @@ def upload_file():
     else:
         return jsonify({"reply": "Unsupported file type"}), 400
 
-    prompt = f"""
-    Summarize the following content clearly and simply:
+   prompt = f"""
+   You are GuruJI AI.
 
-    {text[:12000]}
-    """
+   Use the following document as reference ONLY if relevant.
+
+   Document:
+   {file_context}
+
+   User question:
+   {user_message}
+   """
 
     ai_reply = call_ai(prompt)  # your existing AI function
 
