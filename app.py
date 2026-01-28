@@ -125,6 +125,21 @@ def upload_file():
 
     elif file.filename.endswith(".txt"):
         text = file.read().decode("utf-8")
+        
+    elif file.filename.endswith(".html"):
+        text = file.read().decode("utf-8")
+        
+    elif file.filename.endswith(".css"):
+        text = file.read().decode("utf-8")
+
+    elif file.filename.endswith(".js"):
+        text = file.read().decode("utf-8")
+
+    elif file.filename.endswith(".py"):
+        text = file.read().decode("utf-8")
+
+    elif file.filename.endswith(".jsx"):
+        text = file.read().decode("utf-8")
 
     else:
         return jsonify({"reply": "Unsupported file type, For now i only accept PDF (.pdf) and TEXT (.txt) file formates for educational purposes only"}), 400
