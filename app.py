@@ -317,7 +317,7 @@ def process_questions(room_id):
         f"- Group similar questions together\n"
         f"- Explain clearly and engagingly\n"
         f"- Use examples and analogies\n"
-        f"- Keep it conversational but educational\n"
+        f"- Keep it conversational but educational and keep the answer short\n"
         f"- Format in clean Markdown\n"
         f"- Keep response focused (200-400 words)\n"
     )
