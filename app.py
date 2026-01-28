@@ -313,7 +313,7 @@ def process_questions(room_id):
         f"Level: {level}\n\n"
         f"Students have asked the following questions:\n{question_text}\n\n"
         f"Respond like a real teacher addressing the entire class:\n"
-        f"- Address students by their name {student_name}\n"
+        f"- Address students by name when answering their questions\n"
         f"- Group similar questions together\n"
         f"- Explain clearly and engagingly\n"
         f"- Use examples and analogies\n"
