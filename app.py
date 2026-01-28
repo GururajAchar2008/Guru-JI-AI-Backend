@@ -313,11 +313,11 @@ def process_questions(room_id):
         f"Level: {level}\n\n"
         f"Students have asked the following questions:\n{question_text}\n\n"
         f"Respond like a real teacher addressing the entire class:\n"
-        f"- Address students by name when relevant\n"
+        f"- Address students by their name {student_name}\n"
         f"- Group similar questions together\n"
         f"- Explain clearly and engagingly\n"
         f"- Use examples and analogies\n"
-        f"- Keep it conversational but educational and keep the answer short\n"
+        f"- Keep it conversational but educational and keep the answer as short as posible\n"
         f"- Format in clean Markdown\n"
         f"- Keep response focused (200-400 words)\n"
     )
