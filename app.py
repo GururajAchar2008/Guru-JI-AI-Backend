@@ -89,7 +89,7 @@ def chat():
             "https://openrouter.ai/api/v1/chat/completions",
             headers=headers,
             json=payload,
-            timeout=280
+            timeout=180
         )
 
         data = response.json()
@@ -360,7 +360,7 @@ def process_questions(room_id):
             "https://openrouter.ai/api/v1/chat/completions",
             headers=headers,
             json=payload,
-            timeout=280
+            timeout=180
         )
         
         data = response.json()
