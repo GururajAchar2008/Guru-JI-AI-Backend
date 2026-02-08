@@ -93,7 +93,12 @@ def chat():
         )
 
         data = response.json()
-        reply = data["choices"][0]["message"]["content"]
+        if "choices" in data:
+            replay = data['choices'][0]["message"]["content"]
+        if "output" in data:
+            reply = data["output"][0]["message"]["content"]
+        if "error" in data:
+            reply = data["error"].get("message", "Unknown AI error")
         return jsonify({ "reply": reply })
 
     except Exception as e:
