@@ -94,7 +94,7 @@ def chat():
 
         data = response.json()
         if "choices" in data:
-            replay = data['choices'][0]["message"]["content"]
+            reply = data['choices'][0]["message"]["content"]
         if "output" in data:
             reply = data["output"][0]["message"]["content"]
         if "error" in data:
