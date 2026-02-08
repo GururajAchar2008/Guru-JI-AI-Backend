@@ -1,3 +1,6 @@
+import eventlet
+eventlet.monkey_patch()
+
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit, join_room, leave_room
@@ -8,6 +11,7 @@ from dotenv import load_dotenv
 from PyPDF2 import PdfReader
 import uuid
 from datetime import datetime
+
 
 load_dotenv()
 
@@ -94,19 +98,23 @@ def chat():
         )
 
         data = response.json()
-        if "choices" in data:
-            reply = data['choices'][0]["message"]["content"]
-        if "output" in data:
-            reply = data["output"][0]["message"]["content"]
-        if "error" in data:
-            reply = data["error"].get("message", "Unknown AI error")
+        reply = "⚠️ Guru JI could not generate a response."
+        
+        if isinstance(data, dict):
+            if "choices" in data and data["choices"]:
+                reply = data["choices"][0]["message"]["content"]
+            elif "output" in data and data["output"]:
+                reply = data["output"][0]["content"]
+            elif "error" in data:
+                reply = data["error"].get("message", reply)
+                
         return jsonify({ "reply": reply })
 
     except Exception as e:
         print(f"Error in chat: {e}")
         return jsonify({
-            "reply": "⏳ Guru JI is waking up. Please wait a moment."
-        })
+            "reply": " ⏳ Guru JI is waking up. Please wait a moment."
+        }), 200
 
 
 @app.route("/api/upload", methods=["POST"])
