@@ -13,7 +13,8 @@ load_dotenv()
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode="eventlet")
+
 
 # Store file context per session
 FILE_CONTEXTS = {}
@@ -72,7 +73,7 @@ def chat():
         )
 
     payload = {
-        "model": "deepseek/deepseek-r1-0528:free",
+        "model": "openai/gpt-oss-20b:free",
         "messages": [
             { "role": "system", "content": system_prompt },
             *messages
