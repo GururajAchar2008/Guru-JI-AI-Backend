@@ -77,7 +77,7 @@ def chat():
         )
 
     payload = {
-        "model": "openai/gpt-oss-20b:free",
+        "model": "deepseek/deepseek-r1-0528:free",
         "messages": [
             { "role": "system", "content": system_prompt },
             *messages
