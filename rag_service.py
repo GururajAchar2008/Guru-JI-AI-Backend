@@ -1,6 +1,5 @@
 # rag_service.py
 import requests
-from bs4 import BeautifulSoup
 from duckduckgo_search import DDGS
 
 # Keywords that suggest the query needs fresh/current information
@@ -16,12 +15,13 @@ def needs_web_search(query: str) -> bool:
     q = query.lower()
     return any(kw in q for kw in TIME_SENSITIVE_KEYWORDS)
 
-
 def web_search_context(query: str, max_results: int = 3) -> str:
     """
-    Search DuckDuckGo → scrape top pages → return clean context string
-    Falls back to snippet if scraping fails
+    Fast DuckDuckGo search using snippets only.
+    No webpage scraping.
+    Much faster and safer for Render deployment.
     """
+
     results = []
 
     try:
@@ -29,27 +29,10 @@ def web_search_context(query: str, max_results: int = 3) -> str:
             hits = list(ddgs.text(query, max_results=max_results))
 
         for hit in hits:
-            content = hit.get('body', '')  # DDG snippet as fallback
-
-            try:
-                page = requests.get(hit['href'], timeout=5, headers={
-                    'User-Agent': 'Mozilla/5.0'
-                })
-                soup = BeautifulSoup(page.content, 'html.parser')
-
-                # Remove noise
-                for tag in soup(['script', 'style', 'nav', 'footer', 'header', 'aside']):
-                    tag.decompose()
-
-                content = soup.get_text(separator=' ', strip=True)[:1000]
-
-            except Exception:
-                pass  # stick with DDG snippet
-
             results.append({
-                "title": hit.get('title', ''),
-                "source": hit.get('href', ''),
-                "content": content[:1000]
+                "title": hit.get("title", ""),
+                "source": hit.get("href", ""),
+                "content": hit.get("body", "")
             })
 
     except Exception as e:
@@ -59,13 +42,18 @@ def web_search_context(query: str, max_results: int = 3) -> str:
     if not results:
         return ""
 
-    # Format as readable context block
-    context_lines = ["📡 Web Search Results (use these for current info):\n"]
+    context_lines = [
+        "📡 Latest Web Search Results:\n"
+    ]
+
     for i, r in enumerate(results, 1):
-        context_lines.append(f"[{i}] {r['title']}\nSource: {r['source']}\n{r['content']}\n")
+        context_lines.append(
+            f"[{i}] {r['title']}\n"
+            f"Source: {r['source']}\n"
+            f"{r['content']}\n"
+        )
 
     return "\n".join(context_lines)
-
 
 def build_rag_system_prompt(base_prompt: str, web_context: str, file_context: str) -> str:
     """
