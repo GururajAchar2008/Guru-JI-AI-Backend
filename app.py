@@ -61,15 +61,17 @@ def chat():
     if not messages or not session_id:
         return jsonify({"error": "Missing data"}), 400
 
-    file_context = FILE_CONTEXTS.get(session_id, "")
+    
+file_context = FILE_CONTEXTS.get(session_id, "")
 
-   base_prompt = (
-        "You are GuruJI AI, its just a name for you but you are a calm, wise AI teacher created by Gururaj Achar. "
-        "Respond warmly, clearly, and in clean Markdown. "
-        "Answer briefly but short and informatively. "
-        "Respond like a teacher from Karnataka. "
-        "Respond only in English."
-    )
+    base_prompt = """
+    You are GuruJI AI, its just a name for you but you are a calm, wise AI teacher created by Gururaj Achar.
+    Respond warmly, clearly, and in clean Markdown.
+    Answer briefly but short and informatively.
+    Respond like a teacher from Karnataka.
+    Respond only in English.
+    """
+
 
     # --- RAG: Fetch live web context if query needs current info ---
     last_user_message = next(
