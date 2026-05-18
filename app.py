@@ -62,7 +62,7 @@ def chat():
         return jsonify({"error": "Missing data"}), 400
 
     
-file_context = FILE_CONTEXTS.get(session_id, "")
+    file_context = FILE_CONTEXTS.get(session_id, "")
 
     base_prompt = """
     You are GuruJI AI, its just a name for you but you are a calm, wise AI teacher created by Gururaj Achar.
