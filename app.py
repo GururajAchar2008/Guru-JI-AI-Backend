@@ -77,7 +77,7 @@ def chat():
         )
 
     payload = {
-        "model": "deepseek/deepseek-r1-0528:free",
+        "model": "openrouter/free",
         "messages": [
             { "role": "system", "content": system_prompt },
             *messages
@@ -352,7 +352,7 @@ def process_questions(room_id):
     )
     
     payload = {
-        "model": "deepseek/deepseek-r1-0528:free",
+        "model": "openrouter/free",
         "messages": [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": "Please address the students' questions."}
