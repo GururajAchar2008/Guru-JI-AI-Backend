@@ -87,7 +87,7 @@ def chat():
     system_prompt = build_rag_system_prompt(base_prompt, web_context, file_context)
 
     payload = {
-        "model": "openrouter/free",
+        "model": "google/gemma-4-31b-it:free",
         "messages": [
             { "role": "system", "content": system_prompt },
             *messages
@@ -362,7 +362,7 @@ def process_questions(room_id):
     )
     
     payload = {
-        "model": "openrouter/free",
+        "model": "google/gemma-4-31b-it:free",
         "messages": [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": "Please address the students' questions."}
