@@ -14,26 +14,24 @@ def needs_web_search(query: str) -> bool:
     """Detect if the query needs live web data"""
     q = query.lower()
     return any(kw in q for kw in TIME_SENSITIVE_KEYWORDS)
-
+    
 def web_search_context(query: str, max_results: int = 3) -> str:
     """
-    Fast DuckDuckGo search using snippets only.
-    No webpage scraping.
-    Much faster and safer for Render deployment.
+    Fast and safe web search with timeout protection.
     """
 
     results = []
 
     try:
-        with DDGS() as ddgs:
-            hits = list(ddgs.text(query, max_results=max_results))
+        with DDGS(timeout=10) as ddgs:
+            hits = ddgs.text(query, max_results=max_results)
 
-        for hit in hits:
-            results.append({
-                "title": hit.get("title", ""),
-                "source": hit.get("href", ""),
-                "content": hit.get("body", "")
-            })
+            for hit in hits:
+                results.append({
+                    "title": hit.get("title", ""),
+                    "source": hit.get("href", ""),
+                    "content": hit.get("body", "")
+                })
 
     except Exception as e:
         print(f"[RAG] Web search failed: {e}")
@@ -42,9 +40,7 @@ def web_search_context(query: str, max_results: int = 3) -> str:
     if not results:
         return ""
 
-    context_lines = [
-        "📡 Latest Web Search Results:\n"
-    ]
+    context_lines = ["📡 Latest Web Search Results:\n"]
 
     for i, r in enumerate(results, 1):
         context_lines.append(
