@@ -10,5 +10,4 @@ eventlet==0.35.2
 gunicorn==21.2.0
 beautifulsoup4==4.12.3
 lxml==5.2.2
-duckduckgo-search==6.1.0
-
+duckduckgo-search==5.3.1
