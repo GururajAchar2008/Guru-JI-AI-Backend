@@ -11,6 +11,7 @@ from dotenv import load_dotenv
 from PyPDF2 import PdfReader
 import uuid
 from datetime import datetime
+from rag_service import needs_web_search, web_search_context, build_rag_system_prompt
 
 
 load_dotenv()
@@ -62,7 +63,7 @@ def chat():
 
     file_context = FILE_CONTEXTS.get(session_id, "")
 
-    system_prompt = (
+   base_prompt = (
         "You are GuruJI AI, its just a name for you but you are a calm, wise AI teacher created by Gururaj Achar. "
         "Respond warmly, clearly, and in clean Markdown. "
         "Answer briefly but short and informatively. "
@@ -70,11 +71,18 @@ def chat():
         "Respond only in English."
     )
 
-    if file_context:
-        system_prompt += (
-            "\n\nUse the following document as the PRIMARY source:\n"
-            f"{file_context[:12000]}"
-        )
+    # --- RAG: Fetch live web context if query needs current info ---
+    last_user_message = next(
+        (m["content"] for m in reversed(messages) if m["role"] == "user"), ""
+    )
+    web_context = ""
+    rag_used = False
+
+    if needs_web_search(last_user_message):
+        web_context = web_search_context(last_user_message)
+        rag_used = bool(web_context)
+
+    system_prompt = build_rag_system_prompt(base_prompt, web_context, file_context)
 
     payload = {
         "model": "openrouter/free",
@@ -108,7 +116,7 @@ def chat():
             elif "error" in data:
                 reply = data["error"].get("message", reply)
                 
-        return jsonify({ "reply": reply })
+        return jsonify({ "reply": reply, "rag_used": rag_used })
 
     except Exception as e:
         print(f"Error in chat: {e}")
