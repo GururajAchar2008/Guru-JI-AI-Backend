@@ -1,55 +1,98 @@
 # rag_service.py
+import importlib
+import threading
+
 import requests
-from duckduckgo_search import DDGS
+from bs4 import BeautifulSoup
 
 # Keywords that suggest the query needs fresh/current information
 TIME_SENSITIVE_KEYWORDS = [
     'latest', 'current', 'today', 'now', 'recent', 'new',
     'update', '2025', '2026', 'trend', 'news', 'release',
-    'this year', 'this month', 'what is', 'who is',
-    'explain', 'how does', 'difference between'
+    'this year', 'this month'
 ]
 
 def needs_web_search(query: str) -> bool:
     """Detect if the query needs live web data"""
     q = query.lower()
     return any(kw in q for kw in TIME_SENSITIVE_KEYWORDS)
-    
+
+
+def get_ddgs_class():
+    try:
+        return importlib.import_module("duckduckgo_search").DDGS
+    except Exception as exc:
+        print(f"[RAG] duckduckgo_search unavailable: {exc}")
+        return None
+
+
 def web_search_context(query: str, max_results: int = 3) -> str:
     """
-    Fast and safe web search with timeout protection.
+    Search DuckDuckGo → scrape top pages → return clean context string
+    Falls back to snippet if scraping fails
     """
+    DDGS = get_ddgs_class()
+    if DDGS is None:
+        print("[RAG] duckduckgo_search is not installed; skipping web search")
+        return ""
 
     results = []
+    search_error = {"value": None}
 
-    try:
-        with DDGS(timeout=10) as ddgs:
-            hits = ddgs.text(query, max_results=max_results)
+    def run_search():
+        try:
+            with DDGS() as ddgs:
+                hits = list(ddgs.text(query, max_results=max_results))
 
             for hit in hits:
+                content = hit.get('body', '')  # DDG snippet as fallback
+
+                try:
+                    page = requests.get(hit['href'], timeout=5, headers={
+                        'User-Agent': 'Mozilla/5.0'
+                    })
+                    soup = BeautifulSoup(page.content, 'html.parser')
+
+                    # Remove noise
+                    for tag in soup(['script', 'style', 'nav', 'footer', 'header', 'aside']):
+                        tag.decompose()
+
+                    content = soup.get_text(separator=' ', strip=True)[:1000]
+
+                except Exception:
+                    pass  # stick with DDG snippet
+
                 results.append({
-                    "title": hit.get("title", ""),
-                    "source": hit.get("href", ""),
-                    "content": hit.get("body", "")
+                    "title": hit.get('title', ''),
+                    "source": hit.get('href', ''),
+                    "content": content[:1000]
                 })
 
-    except Exception as e:
-        print(f"[RAG] Web search failed: {e}")
+        except Exception as e:
+            search_error["value"] = e
+
+    worker = threading.Thread(target=run_search, daemon=True)
+    worker.start()
+    worker.join(timeout=8)
+
+    if worker.is_alive():
+        print(f"[RAG] Web search timed out for query: {query}")
+        return ""
+
+    if search_error["value"] is not None:
+        print(f"[RAG] Web search failed: {search_error['value']}")
         return ""
 
     if not results:
         return ""
 
-    context_lines = ["📡 Latest Web Search Results:\n"]
-
+    # Format as readable context block
+    context_lines = ["📡 Web Search Results (use these for current info):\n"]
     for i, r in enumerate(results, 1):
-        context_lines.append(
-            f"[{i}] {r['title']}\n"
-            f"Source: {r['source']}\n"
-            f"{r['content']}\n"
-        )
+        context_lines.append(f"[{i}] {r['title']}\nSource: {r['source']}\n{r['content']}\n")
 
     return "\n".join(context_lines)
+
 
 def build_rag_system_prompt(base_prompt: str, web_context: str, file_context: str) -> str:
     """
