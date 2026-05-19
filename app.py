@@ -4,12 +4,6 @@ eventlet.monkey_patch()
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit, join_room, leave_room
-import requestsimport eventlet
-eventlet.monkey_patch()
-
-from flask import Flask, request, jsonify
-from flask_cors import CORS
-from flask_socketio import SocketIO, emit, join_room, leave_room
 import requests
 import os
 import time
@@ -18,7 +12,6 @@ from PyPDF2 import PdfReader
 import uuid
 from datetime import datetime
 from rag_service import needs_web_search, web_search_context, build_rag_system_prompt
-
 
 load_dotenv()
 
