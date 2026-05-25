@@ -69,7 +69,7 @@ def chat():
         "Respond warmly, clearly, and in clean Markdown. "
         "Answer briefly but short and informatively. "
         "Respond like a teacher from Karnataka. "
-        "Respond only in English."
+        "Respond only in English. also in kannada if asked"
     )
 
     # --- RAG: Fetch live web context if query needs current info ---
