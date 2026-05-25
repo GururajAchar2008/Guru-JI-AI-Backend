@@ -39,6 +39,7 @@ CLASSROOMS = {}
 # }
 
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+OPENROUTER_MODEL = "openrouter/free"
 
 # In-memory conversation store (simple & effective)
 conversation_history = []
@@ -61,17 +62,15 @@ def chat():
     if not messages or not session_id:
         return jsonify({"error": "Missing data"}), 400
 
-    
     file_context = FILE_CONTEXTS.get(session_id, "")
 
-    base_prompt = """
-    You are GuruJI AI, its just a name for you but you are a calm, wise AI teacher created by Gururaj Achar.
-    Respond warmly, clearly, and in clean Markdown.
-    Answer briefly but short and informatively.
-    Respond like a teacher from Karnataka.
-    Respond only in English.
-    """
-
+    base_prompt = (
+        "You are GuruJI AI, its just a name for you but you are a calm, wise AI teacher created by Gururaj Achar. "
+        "Respond warmly, clearly, and in clean Markdown. "
+        "Answer briefly but short and informatively. "
+        "Respond like a teacher from Karnataka. "
+        "Respond only in English."
+    )
 
     # --- RAG: Fetch live web context if query needs current info ---
     last_user_message = next(
@@ -87,7 +86,7 @@ def chat():
     system_prompt = build_rag_system_prompt(base_prompt, web_context, file_context)
 
     payload = {
-        "model": "openrouter/free",
+        "model": OPENROUTER_MODEL,
         "messages": [
             { "role": "system", "content": system_prompt },
             *messages
@@ -118,12 +117,13 @@ def chat():
             elif "error" in data:
                 reply = data["error"].get("message", reply)
                 
-        return jsonify({ "reply": reply, "rag_used": rag_used })
+        return jsonify({ "reply": reply, "rag_used": rag_used, "model": OPENROUTER_MODEL })
 
     except Exception as e:
         print(f"Error in chat: {e}")
         return jsonify({
-            "reply": " ⏳ Guru JI is waking up. Please wait a moment."
+            "reply": " ⏳ Guru JI is waking up. Please wait a moment.",
+            "model": OPENROUTER_MODEL,
         }), 200
 
 
@@ -163,6 +163,9 @@ def upload_file():
         text = file.read().decode("utf-8")
 
     elif file.filename.endswith(".jsx"):
+        text = file.read().decode("utf-8")
+        
+    elif file.filename.endswith(".jpeg") or file.filename.endswith(".jpg") or file.filename.endswith(".png"):
         text = file.read().decode("utf-8")
 
     else:
@@ -362,7 +365,7 @@ def process_questions(room_id):
     )
     
     payload = {
-        "model": "openrouter/free",
+        "model": OPENROUTER_MODEL,
         "messages": [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": "Please address the students' questions."}
@@ -388,6 +391,7 @@ def process_questions(room_id):
         # Broadcast response to entire classroom
         socketio.emit('guruji_response', {
             'response': reply,
+            'model': OPENROUTER_MODEL,
             'timestamp': datetime.now().isoformat()
         }, room=room_id)
         
@@ -397,6 +401,7 @@ def process_questions(room_id):
         print(f"Error generating response: {e}")
         socketio.emit('guruji_response', {
             'response': "⏳ I'm having trouble connecting right now. Please try asking again.",
+            'model': OPENROUTER_MODEL,
             'timestamp': datetime.now().isoformat()
         }, room=room_id)
 
