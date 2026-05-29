@@ -41,6 +41,27 @@ CLASSROOMS = {}
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 OPENROUTER_MODEL = "openrouter/free"
 
+
+def extract_response_model(data, response=None):
+    """
+    OpenRouter always returns the actual model used in data["model"].
+    When using openrouter/free, it replaces it with the real routed model name.
+    """
+    # 1. Best source: the response body's "model" field
+    if isinstance(data, dict):
+        model = data.get("model", "")
+        if isinstance(model, str) and model.strip():
+            return model.strip()
+
+    # 2. Fallback: check response headers (x-openrouter-model is a real header)
+    if response is not None:
+        for header in ("x-openrouter-model", "x-model"):
+            val = response.headers.get(header, "")
+            if val:
+                return val.strip()
+
+    return ""
+
 # In-memory conversation store (simple & effective)
 conversation_history = []
 
@@ -69,7 +90,7 @@ def chat():
         "Respond warmly, clearly, and in clean Markdown. "
         "Answer briefly but short and informatively. "
         "Respond like a teacher from Karnataka. "
-        "Respond only in English. also in kannada if asked"
+        "Respond only in English."
     )
 
     # --- RAG: Fetch live web context if query needs current info ---
@@ -117,13 +138,18 @@ def chat():
             elif "error" in data:
                 reply = data["error"].get("message", reply)
                 
-        return jsonify({ "reply": reply, "rag_used": rag_used, "model": OPENROUTER_MODEL })
+        response_model = extract_response_model(data, response)
+        return jsonify({
+            "reply": reply,
+            "rag_used": rag_used,
+            "model": response_model,
+        })
 
     except Exception as e:
         print(f"Error in chat: {e}")
         return jsonify({
             "reply": " ⏳ Guru JI is waking up. Please wait a moment.",
-            "model": OPENROUTER_MODEL,
+            "model": "",
         }), 200
 
 
@@ -387,11 +413,12 @@ def process_questions(room_id):
         
         data = response.json()
         reply = data["choices"][0]["message"]["content"]
+        response_model = extract_response_model(data, response)
         
         # Broadcast response to entire classroom
         socketio.emit('guruji_response', {
             'response': reply,
-            'model': OPENROUTER_MODEL,
+            'model': response_model,
             'timestamp': datetime.now().isoformat()
         }, room=room_id)
         
@@ -401,7 +428,7 @@ def process_questions(room_id):
         print(f"Error generating response: {e}")
         socketio.emit('guruji_response', {
             'response': "⏳ I'm having trouble connecting right now. Please try asking again.",
-            'model': OPENROUTER_MODEL,
+            'model': "",
             'timestamp': datetime.now().isoformat()
         }, room=room_id)
 
