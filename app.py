@@ -395,11 +395,16 @@ def handle_student_question(data):
     room_id = data.get('room_id')
     student_name = data.get('student_name')
     question = data.get('question')
+    requested_model = data.get('model')
     
     if room_id not in CLASSROOMS:
         return
     
     classroom = CLASSROOMS[room_id]
+
+    # If the teacher provided a preferred model, save it for this classroom
+    if isinstance(requested_model, str) and student_name and student_name.lower() == 'teacher':
+        classroom['selected_model'] = requested_model
     
     # Broadcast question to all students
     emit('student_question', {
@@ -472,7 +477,7 @@ def process_questions(room_id):
     )
     
     payload = {
-        "model": OPENROUTER_MODEL,
+        "model": classroom.get('selected_model', OPENROUTER_MODEL),
         "messages": [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": "Please address the students' questions."}
