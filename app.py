@@ -40,6 +40,83 @@ CLASSROOMS = {}
 
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 OPENROUTER_MODEL = "openrouter/free"
+OPENROUTER_MODELS_URL = "https://openrouter.ai/api/v1/models"
+OPENROUTER_MODEL_CACHE = {"value": None, "fetched_at": 0}
+
+
+def _is_free_model(model):
+    if not isinstance(model, dict):
+        return False
+
+    model_id = str(model.get("id", "")).strip()
+    name = str(model.get("name", "")).strip()
+    slug = f"{model_id} {name}".lower()
+
+    pricing = model.get("pricing") or {}
+    numeric_prices = []
+    for key in ("prompt", "completion", "request"):
+        value = pricing.get(key)
+        try:
+            numeric_prices.append(float(value))
+        except (TypeError, ValueError):
+            continue
+
+    is_free_pricing = bool(numeric_prices) and all(price == 0.0 for price in numeric_prices)
+    return bool(model_id) and ("/free" in slug or "free" in slug or is_free_pricing)
+
+
+def fetch_free_openrouter_models():
+    now = time.time()
+    cached_models = OPENROUTER_MODEL_CACHE.get("value")
+    fetched_at = OPENROUTER_MODEL_CACHE.get("fetched_at", 0)
+    if cached_models and now - fetched_at < 900:
+        return cached_models
+
+    headers = {"Content-Type": "application/json"}
+    if OPENROUTER_API_KEY:
+        headers["Authorization"] = f"Bearer {OPENROUTER_API_KEY}"
+
+    response = requests.get(OPENROUTER_MODELS_URL, headers=headers, timeout=20)
+    response.raise_for_status()
+    payload = response.json()
+    models = payload.get("data", []) if isinstance(payload, dict) else []
+
+    free_models = []
+    for model in models:
+        if not _is_free_model(model):
+            continue
+
+        free_models.append(
+            {
+                "id": model.get("id", ""),
+                "name": model.get("name", model.get("id", "")),
+                "provider": model.get("provider", ""),
+                "context_length": model.get("context_length", 0),
+            }
+        )
+
+    free_models.sort(
+        key=lambda item: (item.get("name", "").lower(), item.get("id", "").lower())
+    )
+    OPENROUTER_MODEL_CACHE["value"] = free_models
+    OPENROUTER_MODEL_CACHE["fetched_at"] = now
+    return free_models
+
+
+@app.route("/api/models", methods=["GET"])
+def list_models():
+    try:
+        models = fetch_free_openrouter_models()
+        return jsonify({
+            "models": models,
+            "default": OPENROUTER_MODEL,
+        })
+    except Exception as error:
+        print(f"Error loading model list: {error}")
+        return jsonify({
+            "models": [{"id": OPENROUTER_MODEL, "name": "Auto (openrouter/free)"}],
+            "default": OPENROUTER_MODEL,
+        })
 
 
 def extract_response_model(data, response=None):
@@ -79,6 +156,10 @@ def chat():
     data = request.json
     messages = data.get("messages")
     session_id = data.get("session_id")
+    requested_model = data.get("model") or OPENROUTER_MODEL
+
+    if requested_model in ("auto", "", None):
+        requested_model = OPENROUTER_MODEL
 
     if not messages or not session_id:
         return jsonify({"error": "Missing data"}), 400
@@ -107,7 +188,7 @@ def chat():
     system_prompt = build_rag_system_prompt(base_prompt, web_context, file_context)
 
     payload = {
-        "model": OPENROUTER_MODEL,
+        "model": requested_model,
         "messages": [
             { "role": "system", "content": system_prompt },
             *messages
