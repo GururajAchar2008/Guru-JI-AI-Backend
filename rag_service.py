@@ -142,7 +142,15 @@ def _fallback_query(query: str) -> str:
         if len(iphone_numbers) >= 2:
             models = " ".join(f"iphone {number}" for number in iphone_numbers[:2])
             return f"Apple {models} compare specs"
-        return f"{re.sub(r'\\bdiff\\w*\\s+between\\b', 'difference between', stripped, flags=re.IGNORECASE)} Apple official specs"
+        return (
+    re.sub(
+        r"\bdiff\w*\s+between\b",
+        "difference between",
+        stripped,
+        flags=re.IGNORECASE
+    )
+    + " Apple official specs"
+)
 
     if lowered.startswith("current "):
         return f"who is {stripped[8:]} now"
