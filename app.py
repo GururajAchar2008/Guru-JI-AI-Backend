@@ -180,10 +180,22 @@ def chat():
     )
     web_context = ""
     rag_used = False
+    web_search_needed = needs_web_search(last_user_message)
 
-    if needs_web_search(last_user_message):
+    if web_search_needed:
         web_context = web_search_context(last_user_message)
         rag_used = bool(web_context)
+
+        if not rag_used and not file_context:
+            return jsonify({
+                "reply": (
+                    "I need current web information for that, but I could not "
+                    "fetch reliable search results right now. Please try again "
+                    "in a moment."
+                ),
+                "rag_used": False,
+                "model": "",
+            }), 503
 
     system_prompt = build_rag_system_prompt(base_prompt, web_context, file_context)
 
