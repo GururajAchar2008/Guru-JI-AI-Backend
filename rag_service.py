@@ -12,7 +12,7 @@ TIME_SENSITIVE_KEYWORDS = [
     "latest", "current", "today", "now", "recent", "new", "newest",
     "update", "updated", "2025", "2026", "trend", "trends", "news",
     "release", "released", "this year", "this month", "yesterday",
-    "tomorrow", "price", "score", "schedule", "weather",
+    "tomorrow", "price", "score", "schedule", "weather","difference between", "vs ", "versus ", "compare ", "comparison ", "who is", "what is", "when is", "where is", "how to", "why is", "why are", "explain ", "define ", "meaning of", "significance of", "impact of", "effect of", "consequence of", "implications of", "benefits of", "risks of", "advantages of", "disadvantages of", "pros and cons of", "should i", "is it true that", "can you ", "do you know ", "have you heard ", "what do you think about", "what are your thoughts on", "in your opinion", "from your perspective", "based on current information", "based on current data", "based on current trends", "based on current events", "based on recent information", "based on recent data", "based on recent trends", "based on recent events", "as of ", "according to ", "reported ", "announced ", "confirmed ", "rumored ", "leaked ", "speculated ", "predicted ", "forecasted ", "expected ", "upcoming ", "forthcoming ", "future ", "past ", "previous ", "last ", "next ", "this week", "last week", "next week",
 ]
 SEARCH_TIMEOUT_SECONDS = 8
 PAGE_TIMEOUT_SECONDS = 4
