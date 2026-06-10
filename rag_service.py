@@ -7,7 +7,17 @@ SERPER_API_KEY = os.getenv("SERPER_API_KEY")
 TIME_SENSITIVE_KEYWORDS = [
     "latest", "current", "today", "now", "recent",
     "news", "price", "weather", "score",
-    "update", "2025", "2026", "2024"
+    "update", "2025", "2026", "2024", "difference between",
+    "vs",
+    "versus",
+    "compare",
+    "comparison", "iphone",
+    "samsung",
+    "pixel",
+    "macbook",
+    "rtx",
+    "playstation",
+    "xbox"
 ]
 
 COMPARISON_KEYWORDS = [
