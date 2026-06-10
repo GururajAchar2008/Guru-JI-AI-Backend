@@ -42,6 +42,7 @@ OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 OPENROUTER_MODEL = "openrouter/free"
 OPENROUTER_MODELS_URL = "https://openrouter.ai/api/v1/models"
 OPENROUTER_MODEL_CACHE = {"value": None, "fetched_at": 0}
+OPENROUTER_CHAT_TIMEOUT_SECONDS = 45
 
 
 def _is_free_model(model):
@@ -167,7 +168,7 @@ def chat():
     file_context = FILE_CONTEXTS.get(session_id, "")
 
     base_prompt = (
-        "You are VELKOR AI, its just a name for you but you are a calm, wise AI teacher created by Gururaj Achar. "
+        "You are Velkor AI, a calm, wise AI teacher created by Gururaj Achar. "
         "Respond warmly, clearly, and in clean Markdown. "
         "Answer briefly but short and informatively. "
         "Respond only in English."
@@ -204,10 +205,17 @@ def chat():
             "https://openrouter.ai/api/v1/chat/completions",
             headers=headers,
             json=payload,
-            timeout=90
+            timeout=(10, OPENROUTER_CHAT_TIMEOUT_SECONDS)
         )
 
-        data = response.json()
+        try:
+            data = response.json()
+        except ValueError:
+            data = {
+                "error": {
+                    "message": response.text.strip() or "Invalid response from the AI service.",
+                }
+            }
         reply = "⚠️ Guru JI could not generate a response."
         
         if isinstance(data, dict):
@@ -225,12 +233,21 @@ def chat():
             "model": response_model,
         })
 
+    except requests.exceptions.Timeout:
+        print("Error in chat: OpenRouter request timed out")
+        return jsonify({
+            "error": {
+                "message": "VELKOR AI timed out while generating the answer. Please try again."
+            }
+        }), 504
+
     except Exception as e:
         print(f"Error in chat: {e}")
         return jsonify({
-            "reply": " ⏳ Guru JI is waking up. Please wait a moment.",
-            "model": "",
-        }), 200
+            "error": {
+                "message": "VELKOR AI could not finish the request. Please try again."
+            }
+        }), 502
 
 
 @app.route("/api/upload", methods=["POST"])
@@ -320,7 +337,7 @@ def create_classroom():
 @socketio.on('connect')
 def handle_connect():
     print(f"Client connected: {request.sid}")
-    emit('connected', {'message': 'Connected to GuruJI'})
+    emit('connected', {'message': 'Connected to Velkor AI'})
 
 
 @socketio.on('disconnect')
@@ -507,7 +524,7 @@ def process_questions(room_id):
             'timestamp': datetime.now().isoformat()
         }, room=room_id)
         
-        print(f"GuruJI responded in classroom {room_id}")
+        print(f"Velkor AI responded in classroom {room_id}")
         
     except Exception as e:
         print(f"Error generating response: {e}")
