@@ -12,9 +12,21 @@ TIME_SENSITIVE_KEYWORDS = [
     "latest", "current", "today", "now", "recent", "new", "newest",
     "update", "updated", "2025", "2026", "trend", "trends", "news",
     "release", "released", "this year", "this month", "yesterday",
-    "tomorrow", "price", "score", "schedule", "weather","difference between", "vs ", "versus ", "compare ", "comparison ", "who is", "what is", "when is", "where is", "how to", "why is", "why are", "explain ", "define ", "meaning of", "significance of", "impact of", "effect of", "consequence of", "implications of", "benefits of", "risks of", "advantages of", "disadvantages of", "pros and cons of", "should i", "is it true that", "can you ", "do you know ", "have you heard ", "what do you think about", "what are your thoughts on", "in your opinion", "from your perspective", "based on current information", "based on current data", "based on current trends", "based on current events", "based on recent information", "based on recent data", "based on recent trends", "based on recent events", "as of ", "according to ", "reported ", "announced ", "confirmed ", "rumored ", "leaked ", "speculated ", "predicted ", "forecasted ", "expected ", "upcoming ", "forthcoming ", "future ", "past ", "previous ", "last ", "next ", "this week", "last week", "next week",
+    "tomorrow", "price", "score", "schedule", "weather", "as of ",
+    "reported ", "announced ", "confirmed ", "rumored ", "leaked ",
+    "expected ", "upcoming ", "future ", "last ", "next ", "this week",
+    "last week", "next week",
 ]
-SEARCH_TIMEOUT_SECONDS = 8
+COMPARISON_KEYWORDS = [
+    "difference between", "vs ", " versus ", "compare ", "comparison ",
+    "pros and cons", "advantages", "disadvantages", "better",
+]
+MODERN_PRODUCT_KEYWORDS = [
+    "iphone", "ipad", "macbook", "pixel", "galaxy", "samsung", "oneplus",
+    "nothing phone", "playstation", "xbox", "nintendo", "gpu", "rtx",
+    "ryzen", "intel", "snapdragon", "apple watch", "airpods",
+]
+SEARCH_TIMEOUT_SECONDS = 12
 PAGE_TIMEOUT_SECONDS = 4
 MAX_PAGE_CHARS = 1200
 
@@ -24,7 +36,15 @@ def needs_web_search(query: str) -> bool:
         return False
 
     q = query.lower()
-    return any(kw in q for kw in TIME_SENSITIVE_KEYWORDS)
+    if any(kw in q for kw in TIME_SENSITIVE_KEYWORDS):
+        return True
+
+    is_comparison = any(kw in q for kw in COMPARISON_KEYWORDS) or bool(
+        re.search(r"\bdiff\w*\s+between\b", q)
+    )
+    mentions_modern_product = any(kw in q for kw in MODERN_PRODUCT_KEYWORDS)
+    has_model_number = bool(re.search(r"\b\d{1,4}\b", q))
+    return is_comparison and (mentions_modern_product or has_model_number)
 
 
 def get_ddgs_class():
@@ -110,6 +130,20 @@ def _duckduckgo_hits(DDGS, query: str, max_results: int) -> list[dict]:
 def _fallback_query(query: str) -> str:
     stripped = (query or "").strip()
     lowered = stripped.lower()
+    iphone_models = re.findall(r"\biphone\s+\d+\w*\b", lowered)
+    is_iphone_comparison = "iphone" in lowered and (
+        any(kw in lowered for kw in COMPARISON_KEYWORDS)
+        or bool(re.search(r"\bdiff\w*\s+between\b", lowered))
+    )
+    if is_iphone_comparison:
+        if len(iphone_models) >= 2:
+            return f"Apple {' '.join(iphone_models)} compare specs"
+        iphone_numbers = re.findall(r"\b\d{1,2}\w*\b", lowered)
+        if len(iphone_numbers) >= 2:
+            models = " ".join(f"iphone {number}" for number in iphone_numbers[:2])
+            return f"Apple {models} compare specs"
+        return f"{re.sub(r'\\bdiff\\w*\\s+between\\b', 'difference between', stripped, flags=re.IGNORECASE)} Apple official specs"
+
     if lowered.startswith("current "):
         return f"who is {stripped[8:]} now"
     if lowered.startswith("latest "):
@@ -175,16 +209,21 @@ def web_search_context(query: str, max_results: int = 3) -> str:
 
             for hit in hits:
                 normalized = _normalize_hit(hit)
+                result_index = None
+                if normalized["content"]:
+                    results.append(normalized)
+                    result_index = len(results) - 1
 
                 try:
                     page_text = _scrape_page_text(normalized["source"])
                     if page_text:
-                        normalized["content"] = page_text
+                        normalized = {**normalized, "content": page_text}
+                        if result_index is None:
+                            results.append(normalized)
+                        else:
+                            results[result_index] = normalized
                 except Exception:
                     pass
-
-                if normalized["content"]:
-                    results.append(normalized)
 
         except Exception as e:
             search_error["value"] = e
@@ -195,7 +234,8 @@ def web_search_context(query: str, max_results: int = 3) -> str:
 
     if worker.is_alive():
         print(f"[RAG] Web search timed out for query: {query}")
-        return ""
+        if not results:
+            return ""
 
     if search_error["value"] is not None:
         print(f"[RAG] Web search failed: {search_error['value']}")
@@ -219,7 +259,13 @@ def build_rag_system_prompt(base_prompt: str, web_context: str, file_context: st
 
     if web_context:
         prompt += f"\n\n{web_context}"
-        prompt += "\n\nUse the above web search results to answer questions about current events, trends, or recent updates."
+        prompt += (
+            "\n\nUse the above web search results as the source of truth for "
+            "current facts, product comparisons, specs, prices, dates, and "
+            "recent updates. Do not invent details that are not supported by "
+            "the search context. If the context is incomplete, say what is "
+            "unclear instead of guessing."
+        )
 
     if file_context:
         prompt += f"\n\nUploaded Document (PRIMARY source for document questions):\n{file_context[:12000]}"
