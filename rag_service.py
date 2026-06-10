@@ -188,8 +188,9 @@ def _bing_hits(query: str, max_results: int) -> list[dict]:
 
 def web_search_context(query: str, max_results: int = 3) -> str:
     """
-    Search DuckDuckGo, scrape top pages, and return a clean context string.
-    Falls back to snippet if scraping fails
+    Search DuckDuckGo (with Bing fallback), scrape top pages, and return
+    a clean context string. Falls back to snippet if scraping fails.
+    Returns "" on any failure — never raises.
     """
     DDGS = get_ddgs_class()
     if DDGS is None:
@@ -201,29 +202,45 @@ def web_search_context(query: str, max_results: int = 3) -> str:
 
     def run_search():
         try:
-            try:
-                hits = _duckduckgo_hits(DDGS, query, max_results)
-            except Exception as ddg_error:
-                print(f"[RAG] DuckDuckGo failed, trying Bing fallback: {ddg_error}")
-                hits = _bing_hits(query, max_results)
+            hits = []
+            # Try DuckDuckGo with up to 2 retries before falling back to Bing
+            for attempt in range(2):
+                try:
+                    hits = _duckduckgo_hits(DDGS, query, max_results)
+                    if hits:
+                        break
+                except Exception as ddg_error:
+                    print(f"[RAG] DuckDuckGo attempt {attempt + 1} failed: {ddg_error}")
+                    if attempt == 1:
+                        # Both DDG attempts failed — try Bing
+                        try:
+                            print("[RAG] Trying Bing fallback...")
+                            hits = _bing_hits(query, max_results)
+                        except Exception as bing_error:
+                            print(f"[RAG] Bing fallback also failed: {bing_error}")
+                            hits = []
 
             for hit in hits:
-                normalized = _normalize_hit(hit)
-                result_index = None
-                if normalized["content"]:
-                    results.append(normalized)
-                    result_index = len(results) - 1
-
                 try:
-                    page_text = _scrape_page_text(normalized["source"])
-                    if page_text:
-                        normalized = {**normalized, "content": page_text}
-                        if result_index is None:
-                            results.append(normalized)
-                        else:
-                            results[result_index] = normalized
-                except Exception:
-                    pass
+                    normalized = _normalize_hit(hit)
+                    result_index = None
+                    if normalized["content"]:
+                        results.append(normalized)
+                        result_index = len(results) - 1
+
+                    # Scrape page for richer content — skip on any error
+                    try:
+                        page_text = _scrape_page_text(normalized["source"])
+                        if page_text:
+                            normalized = {**normalized, "content": page_text}
+                            if result_index is None:
+                                results.append(normalized)
+                            else:
+                                results[result_index] = normalized
+                    except Exception as scrape_err:
+                        print(f"[RAG] Page scrape failed for {normalized['source']}: {scrape_err}")
+                except Exception as hit_err:
+                    print(f"[RAG] Error processing hit: {hit_err}")
 
         except Exception as e:
             search_error["value"] = e
@@ -233,15 +250,17 @@ def web_search_context(query: str, max_results: int = 3) -> str:
     worker.join(timeout=SEARCH_TIMEOUT_SECONDS)
 
     if worker.is_alive():
-        print(f"[RAG] Web search timed out for query: {query}")
+        print(f"[RAG] Web search timed out after {SEARCH_TIMEOUT_SECONDS}s for query: {query!r}")
+        # Return whatever partial results we already have
         if not results:
             return ""
 
     if search_error["value"] is not None:
-        print(f"[RAG] Web search failed: {search_error['value']}")
+        print(f"[RAG] Web search failed with exception: {search_error['value']}")
         return ""
 
     if not results:
+        print(f"[RAG] No results found for query: {query!r}")
         return ""
 
     context_lines = ["Web Search Results (use these for current info):\n"]
