@@ -181,23 +181,22 @@ def chat():
     web_context = ""
     rag_used = False
     web_search_needed = needs_web_search(last_user_message)
+    rag_failed = False
 
     if web_search_needed:
         web_context = web_search_context(last_user_message)
         rag_used = bool(web_context)
-
-        if not rag_used and not file_context:
-            return jsonify({
-                "reply": (
-                    "I need current web information for that, but I could not "
-                    "fetch reliable search results right now. Please try again "
-                    "in a moment."
-                ),
-                "rag_used": False,
-                "model": "",
-            }), 503
+        rag_failed = not rag_used
 
     system_prompt = build_rag_system_prompt(base_prompt, web_context, file_context)
+    if rag_failed:
+        system_prompt += (
+            "\n\nWeb lookup failed for this question. Still answer helpfully "
+            "using your general knowledge, but start with a short note that "
+            "live web lookup failed and the answer may need verification for "
+            "current facts. Do not invent exact current specs, prices, dates, "
+            "or availability if you are unsure."
+        )
 
     payload = {
         "model": requested_model,
@@ -220,6 +219,30 @@ def chat():
             timeout=(10, OPENROUTER_CHAT_TIMEOUT_SECONDS)
         )
 
+        # Handle 503/502/429 from OpenRouter — return a soft reply instead of crashing
+        if response.status_code in (503, 502, 429):
+            status_messages = {
+                503: "OpenRouter is temporarily unavailable (503). This usually resolves in seconds — please try again.",
+                502: "OpenRouter returned a bad gateway error (502). Please try again shortly.",
+                429: "You’ve hit OpenRouter’s rate limit (429). Please wait a moment and try again.",
+            }
+            soft_reply = (
+                f"⚠️ {status_messages.get(response.status_code, 'The AI service returned an error.')} "
+                f"\n\nIf this keeps happening, try switching to a different model using the selector."
+            )
+            if rag_failed:
+                soft_reply = (
+                    "⚠️ Web search also failed — your server may have limited internet access. "
+                    "Check your server’s network connection.\n\n" + soft_reply
+                )
+            return jsonify({
+                "reply": soft_reply,
+                "rag_used": rag_used,
+                "rag_failed": rag_failed,
+                "model": "",
+                "service_error": True,
+            })
+
         try:
             data = response.json()
         except ValueError:
@@ -228,7 +251,7 @@ def chat():
                     "message": response.text.strip() or "Invalid response from the AI service.",
                 }
             }
-        reply = "⚠️ Guru JI could not generate a response."
+        reply = "⚠️ Velkor AI could not generate a response."
         
         if isinstance(data, dict):
             if "choices" in data and data["choices"]:
@@ -236,30 +259,49 @@ def chat():
             elif "output" in data and data["output"]:
                 reply = data["output"][0]["content"]
             elif "error" in data:
-                reply = data["error"].get("message", reply)
+                err_msg = data["error"].get("message", "Unknown error")
+                reply = f"⚠️ The AI model returned an error: {err_msg}\n\nTry selecting a different model."
+
+        if rag_failed and reply and not reply.startswith("⚠️"):
+            reply = (
+                "⚠️ Live web lookup failed — I’m answering from general knowledge. "
+                "For current specs, prices, or live data, please verify online.\n\n"
+                + reply
+            )
                 
         response_model = extract_response_model(data, response)
         return jsonify({
             "reply": reply,
             "rag_used": rag_used,
+            "rag_failed": rag_failed,
             "model": response_model,
         })
 
     except requests.exceptions.Timeout:
         print("Error in chat: OpenRouter request timed out")
         return jsonify({
-            "error": {
-                "message": "VELKOR AI timed out while generating the answer. Please try again."
-            }
-        }), 504
+            "reply": (
+                "⏳ The AI took too long to respond (timeout). "
+                "This is common with busy free models — please try again or switch models."
+            ),
+            "rag_used": rag_used,
+            "rag_failed": rag_failed,
+            "model": "",
+            "service_error": True,
+        })
 
     except Exception as e:
         print(f"Error in chat: {e}")
         return jsonify({
-            "error": {
-                "message": "VELKOR AI could not finish the request. Please try again."
-            }
-        }), 502
+            "reply": (
+                f"⚠️ Something went wrong on the server. Please try again.\n\n"
+                f"_(Error: {str(e)[:120]})_"
+            ),
+            "rag_used": rag_used,
+            "rag_failed": rag_failed,
+            "model": "",
+            "service_error": True,
+        })
 
 
 @app.route("/api/upload", methods=["POST"])
